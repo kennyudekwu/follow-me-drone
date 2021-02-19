@@ -6,11 +6,11 @@ import sys
 import time
 import exceptions
 from pymavlink import mavutil
-import socket
+
 import cv2 as cv
 import numpy as np
 import contextlib
-import subprocess
+
 
 from droneapp.models.base import Singleton
 
