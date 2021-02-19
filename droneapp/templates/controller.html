@@ -1,0 +1,53 @@
+{% extends "layout.html" %}
+
+{% block content %}
+<style>
+    .controller-box{
+        text-align: center;
+    }
+</style>
+<script>
+    function sendCommand(command, params={}){
+        console.log({action: 'sendCommand', command: command, params: params})
+        params['command'] = command
+        $.post("/api/command/", params).done(function (json){
+            console.log({action: 'sendCommand', json: json});
+        }, 'json')
+    }
+
+    function snapShot(){
+         $.post("/api/command/", {'command': 'snapshot'}).done(function (json){
+             $("#div-snapshot").show();
+             $('#snapshot').attr('src', $('#snapshot').attr('src') + '?' + Math.random());
+        }, 'json')
+
+    }
+</script>
+
+<div class="controller-box">
+    <h1>Toggle Switch</h1>
+</div>
+
+<div class="controller-box">
+    <div data-role="controlgroup" data-type="horizontal">
+        <a href="#" data-role="button" onclick="sendCommand('takeOff'); return false;">Auto Takeoff</a>
+        <a href="#" data-role="button" onclick="sendCommand('land')">Land</a>
+    </div>
+    <div data-role="controlgroup" data-type="vertical">
+        <a href="#" data-role="button" onclick="sendCommand('faceDetectandTrack'); return false;">"Follow me"</a>
+        <a href="#" data-role="button" onclick="sendCommand('stopfaceDetectandTrack'); return false;">"stop 'Follow me' "</a>
+    </div>
+    <br>
+    <img src="/video/streaming">
+</div>
+
+<div class="controller-box">
+    <h3>CAMERA</h3>
+    <a href="#" data-role="button" data-inline="true"onclick="snapShot(); return false;">Snapshot</a>
+    <br>
+    <div id="div-snapshot" style="display: none">
+        <img id="snapshot" src="/static/img/snapshots/snapshot.jpg">
+    </div>
+</div>
+
+{% endblock %}
