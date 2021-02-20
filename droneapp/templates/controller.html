@@ -17,7 +17,7 @@
 
     function snapShot(){
          $.post("/api/command/", {'command': 'snapshot'}).done(function (json){
-             $("#div-snapshot").show();
+             $('#div-snapshot').show();
              $('#snapshot').attr('src', $('#snapshot').attr('src') + '?' + Math.random());
         }, 'json')
 
