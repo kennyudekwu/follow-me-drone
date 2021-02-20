@@ -17,7 +17,7 @@ from droneapp.models.base import Singleton
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-DEFAULT_ALTITUDE = 2
+DEFAULT_ALTITUDE = 1.86
 
 FRAME_X = int(960 / 3)
 FRAME_Y = int(720 / 3)
