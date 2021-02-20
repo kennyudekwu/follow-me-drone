@@ -11,7 +11,6 @@ import cv2 as cv
 import numpy as np
 import contextlib
 
-
 from droneapp.models.base import Singleton
 
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
@@ -50,13 +49,13 @@ class DroneManager:
         # Connect to the Vehicle (in this case a UDP endpoint)
         self.vehicle = connect(self.connection_string, wait_ready=self.wait_ready, baud=self.baud)
 
-        self._play_video_thread = threading.Thread(target=self.video_jpeg_generator)
-        self._play_video_thread.start()
-
         if not os.path.exists(FACE_DETECT_XML_FILE):
             raise ErrorNoFaceDetectXMLFile('No {}'.format(FACE_DETECT_XML_FILE))
         self.face_cascade = cv.CascadeClassifier(FACE_DETECT_XML_FILE)
         self._is_enable_face_detect = False
+
+        self._play_video_thread = threading.Thread(target=self.video_jpeg_generator)
+        self._play_video_thread.start()
 
         if not os.path.exists(SNAPSHOT_IMAGE_FOLDER):
             raise ErrorNoImageDir('{} does not exists'.format(SNAPSHOT_IMAGE_FOLDER))
@@ -176,7 +175,7 @@ class DroneManager:
 
             if self.is_snapshot:
                 backup_file = time.strftime("%Y%m%d-%H%M%S") + '.jpg'
-                snapshot_file = 'snapshot.jpeg'
+                snapshot_file = 'snapshot.jpg'
                 for filename in (backup_file, snapshot_file):
                     file_path = os.path.join(
                         SNAPSHOT_IMAGE_FOLDER, filename)
@@ -197,11 +196,3 @@ class DroneManager:
         return False
 
 
-if __name__ == '__main__ ':
-    drone_manager = DroneManager()
-    drone_manager.arm_and_takeOff()
-
-    time.sleep(10)
-
-    drone_manager.land_and_disarm()
-    drone_manager.stop()
