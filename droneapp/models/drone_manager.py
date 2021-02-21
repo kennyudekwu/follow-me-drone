@@ -99,7 +99,7 @@ class DroneManager:
                 break
             time.sleep(1)
 
-        print("Default DEFAULT_ALTITUDE reached")
+        print("Default altitude reached")
         return None
 
     def land_and_disarm(self):
