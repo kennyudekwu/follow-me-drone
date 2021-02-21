@@ -5,8 +5,8 @@ import threading
 import sys
 import time
 import exceptions
-from pymavlink import mavutil
 
+from pymavlink import mavutil
 import cv2 as cv
 import numpy as np
 import contextlib
@@ -30,6 +30,10 @@ FACE_DETECT_XML_FILE = './droneapp/models/haarcascade_frontalface_default.xml'
 
 SNAPSHOT_IMAGE_FOLDER = './droneapp/static/img/snapshots/'
 
+FACE_CASCADE = cv.CascadeClassifier(FACE_DETECT_XML_FILE)
+
+DS_FACTOR = 0.6
+
 
 class ErrorNoFaceDetectXMLFile(Exception):
     """Error no face detect xml file"""
@@ -51,11 +55,10 @@ class DroneManager:
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
             raise ErrorNoFaceDetectXMLFile('No {}'.format(FACE_DETECT_XML_FILE))
-        self.face_cascade = cv.CascadeClassifier(FACE_DETECT_XML_FILE)
+
         self._is_enable_face_detect = False
 
-        self._play_video_thread = threading.Thread(target=self.video_jpeg_generator)
-        self._play_video_thread.start()
+        self.cap = cv.VideoCapture(0)
 
         if not os.path.exists(SNAPSHOT_IMAGE_FOLDER):
             raise ErrorNoImageDir('{} does not exists'.format(SNAPSHOT_IMAGE_FOLDER))
@@ -69,6 +72,7 @@ class DroneManager:
 
     def stop(self):
         self.vehicle.close()
+        self.cap.release()
 
     def arm_and_takeOff(self):
         while not self.vehicle.is_armable:
@@ -137,12 +141,13 @@ class DroneManager:
         self._is_enable_face_detect = False
 
     def video_jpeg_generator(self):
-        cap = cv.VideoCapture(0)
-        while cap.isOpened():
-            img, frame = cap.read()
+        while True:
+            img, frame = self.cap.read()
+            frame = cv.resize(frame, None, fx=DS_FACTOR, fy=DS_FACTOR,
+                              interpolation=cv.INTER_AREA)
             if self._is_enable_face_detect:
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-                faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
+                faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
                 for (x, y, w, h) in faces:
                     cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
@@ -154,6 +159,7 @@ class DroneManager:
                     percent_face = face_area / FRAME_AREA
 
                     drone_x, drone_y, drone_z = 0, 0, 0
+
                     if diff_x < -30:
                         drone_y = 0.3
                     if diff_x > 30:
@@ -194,5 +200,3 @@ class DroneManager:
             time.sleep(0.1)
             retry += 1
         return False
-
-

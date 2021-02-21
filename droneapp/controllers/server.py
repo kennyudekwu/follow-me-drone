@@ -5,8 +5,6 @@ from flask import render_template
 from flask import request
 from flask import Response
 
-
-
 from droneapp.models.drone_manager import DroneManager
 
 import config
@@ -66,4 +64,4 @@ def video_feed():
 
 
 def run():
-    app.run(host=config.WEB_ADDRESS, port=config.WEB_PORT, threaded=True)
+    app.run(host=config.WEB_ADDRESS, port=config.WEB_PORT, debug=True, threaded=True)
