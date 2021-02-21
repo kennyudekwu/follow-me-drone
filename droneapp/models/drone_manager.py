@@ -34,6 +34,9 @@ FACE_CASCADE = cv.CascadeClassifier(FACE_DETECT_XML_FILE)
 
 DS_FACTOR = 0.6
 
+# Connect to the Vehicle (in this case a UDP endpoint)
+VEHICLE = connect('/dev/ttyAMA0', wait_ready=True, baud=57600)
+
 
 class ErrorNoFaceDetectXMLFile(Exception):
     """Error no face detect xml file"""
@@ -47,18 +50,12 @@ class DroneManager:
     __metaclass__ = Singleton
 
     def __init__(self, connection_string='/dev/ttyAMA0', wait_ready=True, baud=57600):
-        self.connection_string = connection_string
-        self.wait_ready = wait_ready
-        self.baud = baud
-        # Connect to the Vehicle (in this case a UDP endpoint)
-        self.vehicle = connect(self.connection_string, wait_ready=self.wait_ready, baud=self.baud)
+        self.cap = cv.VideoCapture(0)
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
             raise ErrorNoFaceDetectXMLFile('No {}'.format(FACE_DETECT_XML_FILE))
 
         self._is_enable_face_detect = False
-
-        self.cap = cv.VideoCapture(0)
 
         if not os.path.exists(SNAPSHOT_IMAGE_FOLDER):
             raise ErrorNoImageDir('{} does not exists'.format(SNAPSHOT_IMAGE_FOLDER))
@@ -71,42 +68,44 @@ class DroneManager:
         self.stop()
 
     def stop(self):
-        self.vehicle.close()
+        VEHICLE.close()
         self.cap.release()
 
-    def arm_and_takeOff(self):
-        while not self.vehicle.is_armable:
+    @staticmethod
+    def arm_and_takeOff():
+        while not VEHICLE.is_armable:
             print("Waiting for vehicle to become armable..")
             time.sleep(1)
 
         # switch vehicle to GUIDED mode and wait for change
-        self.vehicle.mode = VehicleMode("GUIDED")
-        while self.vehicle.mode != "GUIDED":
+        VEHICLE.mode = VehicleMode("GUIDED")
+        while VEHICLE.mode != "GUIDED":
             print("Waiting for vehicle to enter GUIDED mode")
             time.sleep(1)
 
         # Arm vehicle once GUIDED mode is confirmed
-        self.vehicle.armed = True
-        while not self.vehicle.armed:
+        VEHICLE.armed = True
+        while not VEHICLE.armed:
             print("Waiting for vehicle to arm..")
             time.sleep(1)
 
-        self.vehicle.simple_takeoff(DEFAULT_ALTITUDE)
+        VEHICLE.simple_takeoff(DEFAULT_ALTITUDE)
 
         while True:
-            print("Current Altitude: %d" % self.vehicle.location.global_relative_frame.alt)
-            if self.vehicle.location.global_relative_frame.alt >= (DEFAULT_ALTITUDE * .95):
+            print("Current Altitude: %d" % VEHICLE.location.global_relative_frame.alt)
+            if VEHICLE.location.global_relative_frame.alt >= (DEFAULT_ALTITUDE * .95):
                 break
             time.sleep(1)
 
         print("Default altitude reached")
         return None
 
-    def land_and_disarm(self):
-        if self.vehicle.location.global_relative_frame.alt > 0:
-            self.vehicle.mode = VehicleMode("LAND")
-        elif self.vehicle.armed:
-            self.vehicle.armed = False
+    @staticmethod
+    def land_and_disarm():
+        if VEHICLE.location.global_relative_frame.alt > 0:
+            VEHICLE.mode = VehicleMode("LAND")
+        elif VEHICLE.armed:
+            VEHICLE.armed = False
 
     def set_velocity_body(self, Vx, Vy, Vz, blocking=True):
         self._command_thread = threading.Thread(target=self._set_velocity_body, args=(Vx, Vy, Vz, blocking))
@@ -119,7 +118,7 @@ class DroneManager:
                 stack.callback(self._command_semaphore.release)
                 logger.info({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz})
 
-                msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
+                msg = VEHICLE.message_factory.set_position_target_local_ned_encode(
                     0,
                     0, 0,
                     mavutil.mavlink.MAV_FRAME_BODY_OFFSET_NED,  # frame
@@ -128,8 +127,8 @@ class DroneManager:
                     Vx, Vy, Vz,  # Velocity
                     0, 0, 0,  # Acceleration
                     0, 0)
-                self.vehicle.send_mavlink(msg)
-                self.vehicle.flush()
+                VEHICLE.send_mavlink(msg)
+                VEHICLE.flush()
         else:
             logger.warning({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz, 'status': 'not_acquire'})
         return None
