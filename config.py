@@ -2,7 +2,8 @@ import os
 import socket
 from flask import Flask
 
-WEB_ADDRESS = socket.gethostbyname(socket.gethostname())
+# WEB_ADDRESS = socket.gethostbyname(socket.gethostname())
+WEB_ADDRESS = '0.0.0.0'
 WEB_PORT = 5000
 PROJECT_ROOT = os.path.dirname(os.path.abspath(__file__))
 TEMPLATES = os.path.join(PROJECT_ROOT, 'droneapp/templates')
