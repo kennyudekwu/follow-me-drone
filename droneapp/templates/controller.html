@@ -16,7 +16,7 @@
     }
 
     function snapShot(){
-         $.post("/api/command/", {'command': 'snapshot'}).done(function (json){
+         $.post("/api/picture/", {'command': 'snapshot'}).done(function (json){
              $('#div-snapshot').show();
              $('#snapshot').attr('src', $('#snapshot').attr('src') + '?' + Math.random());
         }, 'json')
@@ -43,7 +43,7 @@
 
 <div class="controller-box">
     <h3>CAMERA</h3>
-    <a href="#" data-role="button" data-inline="true"onclick="snapShot(); return false;">Snapshot</a>
+    <a href="#" data-role="button" data-inline="true" onclick="snapShot(); return false;">Snapshot</a>
     <br>
     <div id="div-snapshot" style="display: none">
         <img id="snapshot" src="/static/img/snapshots/snapshot.jpg">

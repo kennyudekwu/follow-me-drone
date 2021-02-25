@@ -1,3 +1,4 @@
+from camera import Camera
 from dronekit import connect, VehicleMode, LocationGlobalRelative
 import logging
 import os
@@ -28,19 +29,11 @@ FRAME_CENTER_Y = FRAME_Y / 2
 
 FACE_DETECT_XML_FILE = './droneapp/models/haarcascade_frontalface_default.xml'
 
-SNAPSHOT_IMAGE_FOLDER = './droneapp/static/img/snapshots/'
-
 FACE_CASCADE = cv.CascadeClassifier(FACE_DETECT_XML_FILE)
-
-DS_FACTOR = 0.6
 
 
 class ErrorNoFaceDetectXMLFile(Exception):
     """Error no face detect xml file"""
-
-
-class ErrorNoImageDir(Exception):
-    """Error no image directory"""
 
 
 class DroneManager:
@@ -52,17 +45,12 @@ class DroneManager:
         self.baud = baud
         # Connect to the Vehicle (in this case a UDP endpoint)
         self.vehicle = connect(self.connection_string, wait_ready=self.wait_ready, baud=self.baud)
+        self.cam = Camera()
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
             raise ErrorNoFaceDetectXMLFile('No {}'.format(FACE_DETECT_XML_FILE))
 
         self._is_enable_face_detect = False
-
-        self.cap = cv.VideoCapture(0)
-
-        if not os.path.exists(SNAPSHOT_IMAGE_FOLDER):
-            raise ErrorNoImageDir('{} does not exists'.format(SNAPSHOT_IMAGE_FOLDER))
-        self.is_snapshot = False
 
         self._command_semaphore = threading.Semaphore(1)
         self._command_thread = None
@@ -72,7 +60,6 @@ class DroneManager:
 
     def stop(self):
         self.vehicle.close()
-        self.cap.release()
 
     def arm_and_takeOff(self):
         while not self.vehicle.is_armable:
@@ -142,14 +129,12 @@ class DroneManager:
 
     def video_jpeg_generator(self):
         while True:
-            img, frame = self.cap.read()
-            frame = cv.resize(frame, None, fx=DS_FACTOR, fy=DS_FACTOR,
-                              interpolation=cv.INTER_AREA)
+
             if self._is_enable_face_detect:
-                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+                gray = cv.cvtColor(self.cam.frame, cv.COLOR_BGR2GRAY)
                 faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
                 for (x, y, w, h) in faces:
-                    cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                    cv.rectangle(self.cam.frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     face_center_x = x + (w / 2)
                     face_center_y = x + (h / 2)
@@ -172,31 +157,7 @@ class DroneManager:
                         drone_x = -0.3
                     if percent_face < 0.2:
                         drone_x = 0.3
+
                     self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
 
                     break
-
-            _, jpeg = cv.imencode('.jpg', frame)
-            jpeg_binary = jpeg.tobytes()
-
-            if self.is_snapshot:
-                backup_file = time.strftime("%Y%m%d-%H%M%S") + '.jpg'
-                snapshot_file = 'snapshot.jpg'
-                for filename in (backup_file, snapshot_file):
-                    file_path = os.path.join(
-                        SNAPSHOT_IMAGE_FOLDER, filename)
-                    with open(file_path, 'wb') as f:
-                        f.write(jpeg_binary)
-                self.is_snapshot = False
-
-            yield jpeg_binary
-
-    def snapshot(self):
-        self.is_snapshot = True
-        retry = 0
-        while retry < 3:
-            if not self.is_snapshot:
-                return True
-            time.sleep(0.1)
-            retry += 1
-        return False
