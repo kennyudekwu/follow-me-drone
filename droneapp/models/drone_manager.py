@@ -17,6 +17,8 @@ from droneapp.models.base import Singleton
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
+DS_FACTOR = 0.6
+
 DEFAULT_ALTITUDE = 1.86
 
 FRAME_X = int(960 / 3)
@@ -39,12 +41,9 @@ class ErrorNoFaceDetectXMLFile(Exception):
 class DroneManager:
     __metaclass__ = Singleton
 
-    def __init__(self, connection_string='/dev/ttyAMA0', wait_ready=True, baud=57600):
-        self.connection_string = connection_string
-        self.wait_ready = wait_ready
-        self.baud = baud
-        # Connect to the Vehicle (in this case a UDP endpoint)
-        self.vehicle = connect(self.connection_string, wait_ready=self.wait_ready, baud=self.baud)
+    def __init__(self):
+
+        self.vehicle = vehicle
         self.cam = Camera()
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
@@ -129,12 +128,14 @@ class DroneManager:
 
     def video_jpeg_generator(self):
         while True:
-
+            img, frame = self.cam.cap.read()
+            frame = cv.resize(frame, None, fx=DS_FACTOR, fy=DS_FACTOR,
+                              interpolation=cv.INTER_AREA)
             if self._is_enable_face_detect:
-                gray = cv.cvtColor(self.cam.frame, cv.COLOR_BGR2GRAY)
+                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
                 faces = FACE_CASCADE.detectMultiScale(gray, 1.3, 5)
                 for (x, y, w, h) in faces:
-                    cv.rectangle(self.cam.frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+                    cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     face_center_x = x + (w / 2)
                     face_center_y = x + (h / 2)
@@ -161,3 +162,8 @@ class DroneManager:
                     self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
 
                     break
+
+
+# Connect to the Vehicle (in this case a UDP endpoint)
+print('Connecting to vehicle on: /dev/ttyAMA0')
+vehicle = connect('/dev/ttyAMA0', baud=57600, wait_ready=True)
