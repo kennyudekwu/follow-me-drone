@@ -43,7 +43,7 @@ class DroneManager:
 
     def __init__(self):
 
-        self.vehicle = vehicle
+        self.vehicle = connect('/dev/ttyAMA0', baud=57600, wait_ready=True)
         self.cam = Camera()
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
@@ -166,4 +166,4 @@ class DroneManager:
 
 # Connect to the Vehicle (in this case a UDP endpoint)
 print('Connecting to vehicle on: /dev/ttyAMA0')
-vehicle = connect('/dev/ttyAMA0', baud=57600, wait_ready=True)
+
