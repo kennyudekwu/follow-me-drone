@@ -9,17 +9,26 @@ from droneapp.models.drone_manager import DroneManager
 from droneapp.models.camera import Camera
 
 import config
+from dronekit import connect
 
 logger = logging.getLogger(__name__)
 app = config.app
+vehicle = None
 
 
-def get_drone():
-    return DroneManager()
+def get_drone(arg):
+    return DroneManager(arg)
 
 
 def get_camerafeed():
     return Camera()
+
+
+def get_connection():
+    global vehicle
+    if vehicle is None:
+        vehicle = connect('/dev/ttyAMA0', baud=57600, wait_ready=True)
+    return vehicle
 
 
 @app.route('/')
@@ -36,7 +45,8 @@ def controller():
 def command():
     cmd = request.form.get('command')
     logger.info({'action': 'command', 'cmd': cmd})
-    drone = get_drone()
+    get_connection()
+    drone = get_drone(get_connection())
 
     if cmd == 'takeOff':
         drone.arm_and_takeOff()

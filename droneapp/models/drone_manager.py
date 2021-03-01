@@ -41,9 +41,9 @@ class ErrorNoFaceDetectXMLFile(Exception):
 class DroneManager:
     __metaclass__ = Singleton
 
-    def __init__(self):
+    def __init__(self, vehicle):
 
-        self.vehicle = connect('/dev/ttyAMA0', baud=57600, wait_ready=True)
+        self.vehicle = vehicle
         self.cam = Camera()
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
@@ -163,7 +163,4 @@ class DroneManager:
 
                     break
 
-
-# Connect to the Vehicle (in this case a UDP endpoint)
-print('Connecting to vehicle on: /dev/ttyAMA0')
 
