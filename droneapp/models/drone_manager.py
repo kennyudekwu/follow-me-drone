@@ -1,15 +1,15 @@
 from camera import Camera
-from dronekit import connect, VehicleMode, LocationGlobalRelative
+from dronekit import VehicleMode
 import logging
 import os
 import threading
 import sys
 import time
-import exceptions
+
 
 from pymavlink import mavutil
 import cv2 as cv
-import numpy as np
+
 import contextlib
 
 from droneapp.models.base import Singleton
@@ -162,5 +162,3 @@ class DroneManager:
                     self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
 
                     break
-
-
