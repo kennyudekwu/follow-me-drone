@@ -16,7 +16,7 @@
     }
 
     function snapShot(){
-         $.post("/api/picture/", {'command': 'snapshot'}).done(function (json){
+         $.post("/api/command/", {'command': 'snapshot'}).done(function (json){
              $('#div-snapshot').show();
              $('#snapshot').attr('src', $('#snapshot').attr('src') + '?' + Math.random());
         }, 'json')
@@ -31,11 +31,14 @@
 <div class="controller-box">
     <div data-role="controlgroup" data-type="horizontal">
         <a href="#" data-role="button" onclick="sendCommand('takeOff'); return false;">Auto Takeoff</a>
-        <a href="#" data-role="button" onclick="sendCommand('land')">Land</a>
+        <a href="#" data-role="button" onclick="sendCommand('land') return false;">Land</a>
     </div>
     <div data-role="controlgroup" data-type="vertical">
-        <a href="#" data-role="button" onclick="sendCommand('faceDetectandTrack'); return false;">"Follow me"</a>
-        <a href="#" data-role="button" onclick="sendCommand('stopfaceDetectandTrack'); return false;">"stop 'Follow me' "</a>
+        <a href="#" data-role="button" onclick="sendCommand('faceDetectandTrack'); return false;">"Follow face"</a>
+        <a href="#" data-role="button" onclick="sendCommand('stopfaceDetectandTrack'); return false;">"stop 'Follow face' "</a>
+        <a href="#" data-role="button" onclick="sendCommand('bodyDetectandTrack'); return false;">"Follow body"</a>
+        <a href="#" data-role="button" onclick="sendCommand('stopbodyDetectandTrack'); return false;">"stop 'Follow body' "</a>
+        <a href="#" data-role="button" onclick="sendCommand('stabilizeMode'); return false;">Manual mode</a>
     </div>
     <br>
     <img src="/video/streaming">

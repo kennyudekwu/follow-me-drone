@@ -6,7 +6,6 @@ from flask import request
 from flask import Response
 
 from droneapp.models.drone_manager import DroneManager
-from droneapp.models.camera import Camera
 
 import config
 from dronekit import connect
@@ -18,10 +17,6 @@ vehicle = None
 
 def get_drone(arg):
     return DroneManager(arg)
-
-
-def get_camerafeed():
-    return Camera()
 
 
 def get_connection():
@@ -56,18 +51,14 @@ def command():
         drone.enable_face_detect()
     if cmd == 'stopfaceDetectandTrack':
         drone.disable_face_detect()
-
-    return jsonify(status='success'), 200
-
-
-@app.route('/api/picture/', methods=['POST'])
-def image_capture():
-    cmd = request.form.get('command')
-    logger.info({'action': 'command', 'cmd': cmd})
-    video = get_camerafeed()
-
+    if cmd == 'bodyDetectandTrack':
+        drone.enable_body_detect()
+    if cmd == 'stopbodyDetectandTrack':
+        drone.disable_body_detect()
+    if cmd == 'stabilizeMode':
+        drone.change_mode()
     if cmd == 'snapshot':
-        if video.snapshot():
+        if drone.snapshot():
             return jsonify(status='success'), 200
         else:
             return jsonify(status='fail'), 400
@@ -76,8 +67,10 @@ def image_capture():
 
 
 def video_generator():
-    video = get_camerafeed()
-    for jpeg in video.video_jpeg_generator():
+    get_connection()
+    drone = get_drone(get_connection())
+
+    for jpeg in drone.video_jpeg_generator():
         yield (b'--frame\r\n'
                b'Content-Type: image/jpeg\r\n\r\n' +
                jpeg +

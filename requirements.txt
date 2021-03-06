@@ -11,3 +11,5 @@ numpy==1.16.6
 opencv-python==4.2.0.32
 pymavlink==2.4.14
 Werkzeug==1.0.1
+
+contextlib2~=0.6.0.post1
