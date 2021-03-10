@@ -198,6 +198,7 @@ class DroneManager:
                         drone_x = 0.3
 
                     self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
+                    time.sleep(1)
 
                     break
 
@@ -230,6 +231,7 @@ class DroneManager:
                         drone_x = 0.3
 
                     self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
+                    time.sleep(1)
 
                     break
 
