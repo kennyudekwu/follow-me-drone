@@ -45,8 +45,24 @@ def command():
 
     if cmd == 'takeOff':
         drone.arm_and_takeOff()
-    if cmd == 'land':
+    if cmd == 'land_now':
         drone.land_and_disarm()
+    if cmd == 'up':
+        drone.set_velocity_body(0, 0, -0.2, 0, 0, 0, 0, blocking=False)
+    if cmd == 'clockwise':
+        drone.condition_yaw(15, relative=True, blocking=True)
+    if cmd == 'counterClockwise':
+        drone.condition_yaw(-15, relative=True, blocking=True)
+    if cmd == 'down':
+        drone.set_velocity_body(0, 0, 0.2, 0, 0, 0, 0, blocking=False)
+    if cmd == 'forward':
+        drone.set_velocity_body(0.15, 0, 0, 0, 0, 0, 0, blocking=False)
+    if cmd == 'left':
+        drone.set_velocity_body(0, -0.15, 0, 0, 0, 0, 0, blocking=False)
+    if cmd == 'right':
+        drone.set_velocity_body(0, 0.15, 0, 0, 0, 0, 0, blocking=False)
+    if cmd == 'backward':
+        drone.set_velocity_body(-0.15, 0, 0, 0, 0, 0, 0, blocking=False)
     if cmd == 'faceDetectandTrack':
         drone.enable_face_detect()
     if cmd == 'stopfaceDetectandTrack':
@@ -55,8 +71,12 @@ def command():
         drone.enable_body_detect()
     if cmd == 'stopbodyDetectandTrack':
         drone.disable_body_detect()
-    if cmd == 'stabilizeMode':
+    if cmd == 'loiter':
         drone.change_mode()
+    if cmd == 'guided':
+        drone.change_mode_auto()
+    if cmd == 'rtl':
+        drone.change_mode_RTL()
     if cmd == 'snapshot':
         if drone.snapshot():
             return jsonify(status='success'), 200
