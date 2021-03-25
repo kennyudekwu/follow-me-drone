@@ -281,6 +281,7 @@ class DroneManager:
                     cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     face_center_x = x + (w / 2)
+
                     face_center_y = y + (h / 2)
 
                     # to scale up the face_area to the FRAME_AREA
@@ -327,6 +328,7 @@ class DroneManager:
                     cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     body_center_x = x + (w / 2)
+
                     body_center_y = y + (h / 2)
 
                     # to scale up the face_area to the FRAME_AREA
