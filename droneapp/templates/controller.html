@@ -31,14 +31,79 @@
 <div class="controller-box">
     <div data-role="controlgroup" data-type="horizontal">
         <a href="#" data-role="button" onclick="sendCommand('takeOff'); return false;">Auto Takeoff</a>
-        <a href="#" data-role="button" onclick="sendCommand('land') return false;">Land</a>
+        <a href="#" data-role="button" onclick="sendCommand('land_now'); return false;">Land</a>
     </div>
-    <div data-role="controlgroup" data-type="vertical">
-        <a href="#" data-role="button" onclick="sendCommand('faceDetectandTrack'); return false;">"Follow face"</a>
-        <a href="#" data-role="button" onclick="sendCommand('stopfaceDetectandTrack'); return false;">"stop 'Follow face' "</a>
-        <a href="#" data-role="button" onclick="sendCommand('bodyDetectandTrack'); return false;">"Follow body"</a>
-        <a href="#" data-role="button" onclick="sendCommand('stopbodyDetectandTrack'); return false;">"stop 'Follow body' "</a>
-        <a href="#" data-role="button" onclick="sendCommand('stabilizeMode'); return false;">Manual mode</a>
+</div>
+
+<div style="display: flex; justify-content: center;">
+    <table style="align-self: center;">
+        <td>
+            <div style="text-align: center;">
+                <div class="ui-nodisc-icon ui-alt-icon">
+                    <a id="up" href="#"
+                       class="ui-btn ui-shadow ui-corner-all ui-icon-carat-u
+                              ui-btn-icon-notext ui-btn-inline"
+                       onclick="sendCommand('up'); return false;"></a>
+                </div>
+                <div class="ui-nodisc-icon ui-alt-icon">
+                   <a href="#" class="ui-btn ui-shadow ui-corner-all ui-icon-forward
+                                      ui-btn-icon-notext ui-btn-inline"
+                      onclick="sendCommand('clockwise'); return false;"></a>
+                   <a href="#" class="ui-btn ui-shadow ui-corner-all ui-icon-back
+                                      ui-btn-icon-notext ui-btn-inline"
+                      onclick="sendCommand('counterClockwise'); return false;"></a>
+                </div>
+                <div class="ui-nodisc-icon ui-alt-icon">
+                    <a href="#" class="ui-btn ui-shadow ui-corner-all ui-icon-carat-d
+                                       ui-btn-icon-notext ui-btn-inline"
+                       onclick="sendCommand('down'); return false;"></a>
+                </div>
+            </div>
+        </td>
+
+        <td>
+            <div style="text-align: center;">
+                <div class="ui-nodisc-icon ui-alt-icon">
+                    <a href="#"
+                       class="ui-btn ui-shadow ui-corner-all ui-icon-arrow-u
+                                       ui-btn-icon-notext ui-btn-inline"
+                       onclick="sendCommand('forward'); return false;"></a>
+                </div>
+                <div class="ui-nodisc-icon ui-alt-icon">
+                   <a href="#"
+                      class="ui-btn ui-shadow ui-corner-all ui-icon-arrow-l
+                             ui-btn-icon-notext ui-btn-inline"
+                      onclick="sendCommand('left'); return false;"></a>
+                   <a href="#"
+                      class="ui-btn ui-shadow ui-corner-all ui-icon-arrow-r
+                             ui-btn-icon-notext ui-btn-inline"
+                      onclick="sendCommand('right'); return false;"></a>
+                </div>
+                <div class="ui-nodisc-icon ui-alt-icon">
+                    <a href="#"
+                       class="ui-btn ui-shadow ui-corner-all ui-icon-arrow-d
+                              ui-btn-icon-notext ui-btn-inline"
+                       onclick="sendCommand('backward'); return false;"></a>
+                </div>
+            </div>
+        </td>
+    </table>
+</div>
+
+<div class="controller-box">
+    <div data-role="controlgroup" data-type="horizontal">
+        <a href="#" data-role="button" onclick="sendCommand('faceDetectandTrack'); return false;">Follow face</a>
+        <a href="#" data-role="button" onclick="sendCommand('stopfaceDetectandTrack'); return false;">stop 'Follow face'</a>
+    </div>
+    <div data-role="controlgroup" data-type="horizontal">
+        <a href="#" data-role="button" onclick="sendCommand('bodyDetectandTrack'); return false;">Follow body</a>
+        <a href="#" data-role="button" onclick="sendCommand('stopbodyDetectandTrack'); return false;">stop 'Follow body'</a>
+    </div>
+    <br>
+    <div data-role="controlgroup" data-type="horizontal">
+        <a href="#" data-role="button" onclick="sendCommand('loiter'); return false;">Manual mode</a>
+        <a href="#" data-role="button" onclick="sendCommand('guided'); return false;">Auto mode</a>
+        <a href="#" data-role="button" onclick="sendCommand('rtl'); return false;">Return home</a>
     </div>
     <br>
     <img src="/video/streaming">

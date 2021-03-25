@@ -1,5 +1,6 @@
 from dronekit import VehicleMode
 import logging
+import numpy as np
 import os
 import threading
 import sys
@@ -15,22 +16,23 @@ from droneapp.models.base import Singleton
 logging.basicConfig(level=logging.INFO, stream=sys.stdout)
 logger = logging.getLogger(__name__)
 
-DS_FACTOR = 0.6
+P_Error_yaw = 0
+P_Error_Vz = 0
+P_Error_Vy = 0
+P_Error_Vx = 0
+DEFAULT_ALTITUDE = 1.4
 
-DEFAULT_ALTITUDE = 1.86
-
+PID = [0.5, 0.5]
 FRAME_X = int(960 / 3)
 FRAME_Y = int(720 / 3)
 FRAME_AREA = FRAME_X * FRAME_Y
 
-FRAME_SIZE = FRAME_AREA * 3
 FRAME_CENTER_X = FRAME_X / 2
 FRAME_CENTER_Y = FRAME_Y / 2
 
 FACE_DETECT_XML_FILE = './droneapp/models/haarcascade_frontalface_default.xml'
 BODY_DETECT_XML_FILE = './droneapp/models/haarcascade_fullbody.xml'
 
-DS_FACTOR = 0.6
 SNAPSHOT_IMAGE_FOLDER = './droneapp/static/img/snapshots/'
 
 
@@ -49,6 +51,10 @@ class DroneManager:
 
         self.vehicle = vehicle
         self.cap = cv.VideoCapture(0)
+        self.yaw_val = 0
+        self.Vx = 0
+        self.Vy = 0
+        self.Vz = 0
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
             raise ErrorNoFaceDetectXMLFile('No {}'.format(FACE_DETECT_XML_FILE))
@@ -64,6 +70,8 @@ class DroneManager:
         self.fly = False
         self._command_semaphore = threading.Semaphore(1)
         self._command_thread = None
+        self._yaw_semaphore = threading.Semaphore(1)
+        self._yaw_thread = None
 
     def __del__(self):
         self.stop()
@@ -73,35 +81,43 @@ class DroneManager:
         self.vehicle.close()
 
     def arm_and_takeOff(self):
-        self.fly = True
-        # switch vehicle to GUIDED mode and wait for change
-        self.vehicle.mode = VehicleMode("GUIDED")
-        while self.vehicle.mode != "GUIDED":
-            print("Waiting for vehicle to enter GUIDED mode")
-            time.sleep(1)
-        print("Vehicle now in {}".format(self.vehicle.mode))
-        # Arm vehicle once GUIDED mode is confirmed
-        self.vehicle.armed = True
-
-        while not self.vehicle.armed:
-
-            if self.fly:
-                print("Waiting for vehicle to arm..")
-                print('self.fly={}'.format(self.fly))
+        if not self.vehicle.location.global_relative_frame.alt >= 1:
+            self.fly = True
+            # switch vehicle to GUIDED mode and wait for change
+            self.vehicle.mode = VehicleMode("GUIDED")
+            while self.vehicle.mode != "GUIDED":
+                print("Waiting for vehicle to enter GUIDED mode")
                 time.sleep(1)
-            else:
-                return None
-        self.vehicle.simple_takeoff(DEFAULT_ALTITUDE)
+            print("Vehicle now in {}".format(self.vehicle.mode))
+            # Arm vehicle once GUIDED mode is confirmed
+            self.vehicle.armed = True
 
-        while True:
-            print("Current Altitude: %d" % self.vehicle.location.global_relative_frame.alt)
-            if self.vehicle.location.global_relative_frame.alt >= (DEFAULT_ALTITUDE * .95):
-                break
-            time.sleep(1)
+            while not self.vehicle.armed:
 
-        print("Default altitude reached")
+                if self.fly:
+                    print("Waiting for vehicle to arm..")
+                    print('self.fly={}'.format(self.fly))
+                    time.sleep(1)
+                else:
+                    return None
+            self.vehicle.simple_takeoff(DEFAULT_ALTITUDE)
 
-        return None
+            while True:
+                if self.fly:
+                    print("Current Altitude: %d" % self.vehicle.location.global_relative_frame.alt)
+                    if self.vehicle.location.global_relative_frame.alt >= (DEFAULT_ALTITUDE * .95):
+                        break
+                    time.sleep(1)
+                else:
+                    return None
+
+            print("Default altitude reached")
+
+            return None
+
+        elif self.fly:
+            print("Vehicle is already air bound")
+            return None
 
     def land_and_disarm(self):
         if self.fly:
@@ -109,33 +125,39 @@ class DroneManager:
         print('Running the land function...')
         print('self.fly = {}'.format(self.fly))
 
-        if self.vehicle.location.global_relative_frame.alt > 0:
+        if self.vehicle.location.global_relative_frame.alt > 0.5:
             self.vehicle.mode = VehicleMode("LAND")
             print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
             while not self.vehicle.mode == VehicleMode("LAND"):
                 print("Vehicle is preparing to land...")
             while True:
                 print("Current Altitude: %d" % self.vehicle.location.global_relative_frame.alt)
-                if self.vehicle.location.global_relative_frame.alt <= 0:
+                if self.vehicle.location.global_relative_frame.alt <= 0.5:
                     break
 
         elif self.vehicle.armed:
             self.vehicle.armed = False
             while self.vehicle.armed:
                 print('Disarming motors...')
-
+        print("Vehicle currently grounded")
         return None
 
-    def set_velocity_body(self, Vx, Vy, Vz, blocking=True):
-        self._command_thread = threading.Thread(target=self._set_velocity_body, args=(Vx, Vy, Vz, blocking))
+    def set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff, blocking=True):
+        self._command_thread = threading.Thread(target=self._set_velocity_body, args=(Vx, Vy, Vz, dx, dy, dz,
+                                                                                      ff, blocking))
         self._command_thread.start()
 
-    def _set_velocity_body(self, Vx, Vy, Vz, blocking=True):
+    def condition_yaw(self, heading, relative=False, blocking=True):
+        self._yaw_thread = threading.Thread(target=self._condition_yaw, args=(heading, relative, blocking))
+        self._yaw_thread.start()
+
+    def _set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff, blocking=True):
         is_acquire = self._command_semaphore.acquire(blocking=blocking)
         if is_acquire:
             with ExitStack() as stack:
                 stack.callback(self._command_semaphore.release)
-                logger.info({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz})
+                logger.info({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz,
+                             'diffx': dx, 'diffy': dy, 'percent': dz, 'frameA': FRAME_AREA, 'Face_frame': ff})
 
                 msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
                     0,
@@ -152,6 +174,33 @@ class DroneManager:
             logger.warning({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz, 'status': 'not_acquire'})
         return None
 
+    def _condition_yaw(self, heading, relative=False, blocking=True):
+        is_acquire = self._command_semaphore.acquire(blocking=blocking)
+        if is_acquire:
+            with ExitStack() as stack1:
+                stack1.callback(self._command_semaphore.release)
+                logger.info({'action': 'send yaw command', 'yaw_val': heading})
+                if relative:
+                    is_relative = 1  # yaw relative to direction of travel
+                else:
+                    is_relative = 0  # yaw is an absolute angle
+                # create the CONDITION_YAW command using command_long_encode()
+                msg = self.vehicle.message_factory.command_long_encode(
+                    0, 0,  # target system, target component
+                    mavutil.mavlink.MAV_CMD_CONDITION_YAW,  # command
+                    0,  # confirmation
+                    0,  # param 1, yaw in degrees
+                    heading,  # param 2, yaw speed deg/s
+                    1,  # param 3, direction -1 ccw, 1 cw
+                    is_relative,  # param 4, relative offset 1, absolute angle 0
+                    0, 0, 0)  # param 5 ~ 7 not used
+                # send command to vehicle
+                self.vehicle.send_mavlink(msg)
+                self.vehicle.flush()
+        else:
+            logger.warning({'action': 'send yaw command', 'Yaw-val': heading, 'status': 'not_acquire'})
+        return None
+
     def enable_face_detect(self):
         self._is_enable_face_detect = True
 
@@ -164,76 +213,156 @@ class DroneManager:
     def disable_body_detect(self):
         self._is_enable_body_detect = False
 
+    def error_calc_yaw(self, info, w, pid, pError):
+        error = info[0][0] - w // 2
+        speed = (pid[0] * error) + (pid[1] * (error - pError))
+        speed = int(np.clip(speed, -100, 100))
+
+        if info[0][0] != 0:
+            self.yaw_val = speed
+        else:
+            self.yaw_val = 0
+            error = 0
+
+        return error
+
+    def error_calc_Vz(self, info, h, pid, pError):
+        error = info[0][1] - h // 2
+        speed = ((pid[0] * error) + (pid[1] * (error - pError)))
+        speed = int(np.clip(speed, -5, 5))
+
+        if info[0][1] != 0:
+            self.Vz = speed
+        else:
+            self.Vz = 0
+            error = 0
+
+        return error
+
+    def error_calc_Vx(self, info, pid, pError):
+        error = float("{:.3f}".format(float((0.30 * FRAME_AREA) - info[1])))
+        speed = (pid[0] * error) + (pid[1] * (error - pError))
+        speed = int(np.clip(speed, -5, 5))
+
+        if info[1] != 0:
+            self.Vx = speed
+        else:
+            self.Vx = 0
+            error = 0
+
+        return error
+
+    def error_calc_Vy(self, info, w, pid, pError):
+        error = info[0][0] - w // 2
+        speed = (pid[0] * error) + (pid[1] * (error - pError))
+        speed = int(np.clip(speed, -5, 5))
+
+        if info[0][0] != 0:
+            self.Vy = speed
+        else:
+            self.Vy = 0
+            error = 0
+
+        return error
+
     def video_jpeg_generator(self):
         while True:
             img, frame = self.cap.read()
-            frame = cv.resize(frame, None, fx=DS_FACTOR, fy=DS_FACTOR,
-                              interpolation=cv.INTER_AREA)
+            frame = cv.resize(frame, (FRAME_X, FRAME_Y))
+
             if self._is_enable_face_detect:
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
                 faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
+
+                my_face_list_center = []
+                my_face_list_area = []
+
                 for (x, y, w, h) in faces:
                     cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     face_center_x = x + (w / 2)
-                    face_center_y = x + (h / 2)
-                    diff_x = FRAME_CENTER_X - face_center_x
-                    diff_y = FRAME_CENTER_Y - face_center_y
-                    face_area = w * h
-                    percent_face = face_area / FRAME_AREA
 
-                    drone_x, drone_y, drone_z = 0, 0, 0
+                    face_center_y = y + (h / 2)
 
-                    if diff_x < -30:
-                        drone_y = 0.3
-                    if diff_x > 30:
-                        drone_y = -0.3
-                    if diff_y < -15:
-                        drone_z = 0.3
-                    if diff_y > 15:
-                        drone_z = -0.3
-                    if percent_face > 0.3:
-                        drone_x = -0.3
-                    if percent_face < 0.2:
-                        drone_x = 0.3
+                    # to scale up the face_area to the FRAME_AREA
+                    face_area = float("{:.3f}".format(float(w * h * 14.8145)))
+                    my_face_list_area.append(face_area)
+                    my_face_list_center.append((face_center_x, face_center_y))
 
-                    self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
-                    time.sleep(1)
+                if len(my_face_list_area) != 0:
+                    i = my_face_list_area.index(max(my_face_list_area))
+                    info = [my_face_list_center[i], my_face_list_area[i]]
+                else:
+                    info = [[0, 0], 0]
 
-                    break
+                diff_x = FRAME_CENTER_X - info[0][0]
+                diff_y = FRAME_CENTER_Y - info[0][1]
+
+                raw_percent_face = float(info[1] / FRAME_AREA)
+                percent_face = float("{:.3f}".format(raw_percent_face))
+
+                global P_Error_yaw
+                P_Error_yaw = self.error_calc_yaw(info, FRAME_X, PID, P_Error_yaw)
+
+                global P_Error_Vx
+                P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
+
+                global P_Error_Vy
+                P_Error_Vy = self.error_calc_Vy(info, FRAME_X, PID, P_Error_Vy)
+
+                global P_Error_Vz
+                P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
+
+                self.set_velocity_body(self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_face, info[1],
+                                       blocking=False)
+                self.condition_yaw(self.yaw_val, relative=True, blocking=False)
 
             elif self._is_enable_body_detect:
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
                 bodies = self.body_cascade.detectMultiScale(gray, 1.3, 5)
+
+                my_body_list_center = []
+                my_body_list_area = []
+
                 for (x, y, w, h) in bodies:
                     cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
                     body_center_x = x + (w / 2)
-                    body_center_y = x + (h / 2)
-                    diff_x = FRAME_CENTER_X - body_center_x
-                    diff_y = FRAME_CENTER_Y - body_center_y
-                    body_area = w * h
-                    percent_face = body_area / FRAME_AREA
 
-                    drone_x, drone_y, drone_z = 0, 0, 0
+                    body_center_y = y + (h / 2)
 
-                    if diff_x < -30:
-                        drone_y = 0.3
-                    if diff_x > 30:
-                        drone_y = -0.3
-                    if diff_y < -15:
-                        drone_z = 0.3
-                    if diff_y > 15:
-                        drone_z = -0.3
-                    if percent_face > 0.3:
-                        drone_x = -0.3
-                    if percent_face < 0.2:
-                        drone_x = 0.3
+                    # to scale up the face_area to the FRAME_AREA
+                    body_area = float("{:.3f}".format(float(w * h * 14.8145)))
+                    my_body_list_area.append(body_area)
+                    my_body_list_center.append((body_center_x, body_center_y))
 
-                    self.set_velocity_body(drone_x, drone_y, drone_z, blocking=False)
-                    time.sleep(1)
+                if len(my_body_list_area) != 0:
+                    i = my_body_list_area.index(max(my_body_list_area))
+                    info = [my_body_list_center[i], my_body_list_area[i]]
+                else:
+                    info = [[0, 0], 0]
 
-                    break
+                diff_x = FRAME_CENTER_X - info[0][0]
+                diff_y = FRAME_CENTER_Y - info[0][1]
+
+                raw_percent_body = float(info[1] / FRAME_AREA)
+                percent_body = float("{:.3f}".format(raw_percent_body))
+
+                global P_Error_yaw
+                P_Error_yaw = self.error_calc_yaw(info, FRAME_X, PID, P_Error_yaw)
+
+                global P_Error_Vx
+                P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
+
+                global P_Error_Vy
+                P_Error_Vy = self.error_calc_Vy(info, FRAME_X, PID, P_Error_Vy)
+
+                global P_Error_Vz
+                P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
+
+                self.set_velocity_body(self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_body, info[1],
+                                       blocking=False)
+                self.condition_yaw(self.yaw_val, relative=True, blocking=False)
 
             _, jpeg = cv.imencode('.jpg', frame)
             jpeg_binary = jpeg.tobytes()
@@ -261,5 +390,31 @@ class DroneManager:
         return False
 
     def change_mode(self):
-        self.vehicle.mode = VehicleMode("STABILIZE")
+        if not self.vehicle.mode.name == "LOITER":
+            self.vehicle.mode = VehicleMode("LOITER")
+            while self.vehicle.mode != VehicleMode("LOITER"):
+                print("Waiting for vehicle to enter LOITER mode")
+            print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
+        else:
+            print('Vehicle mode already {}'.format(self.vehicle.mode))
+        return None
+
+    def change_mode_auto(self):
+        if not self.vehicle.mode.name == "GUIDED":
+            self.vehicle.mode = VehicleMode("GUIDED")
+            while self.vehicle.mode != VehicleMode("GUIDED"):
+                print("Waiting for vehicle to enter GUIDED mode")
+            print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
+        else:
+            print('Vehicle mode already {}'.format(self.vehicle.mode))
+        return None
+
+    def change_mode_RTL(self):
+        if not self.vehicle.mode.name == "RTL":
+            self.vehicle.mode = VehicleMode("RTL")
+            while self.vehicle.mode != VehicleMode("RTL"):
+                print("vehicle is initializing RTL mode...")
+            print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
+        else:
+            print('Vehicle mode already {}'.format(self.vehicle.mode))
         return None
