@@ -15,3 +15,7 @@ To correctly experience the workability of this project, please follow these ste
 
 ## 🦾🤝 Contribution 
 Feel free to contribute to this project. If there's any way you may feel that this project is lacking, please do well to initiate a PR and work your magic. I have an idea that would take this project to the next level...^_^. Let's collaborate.
+
+## 🔑 License
+
+[MIT](./LICENSE) © Onyedikachi Kenny Udekwu
