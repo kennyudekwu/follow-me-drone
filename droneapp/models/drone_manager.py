@@ -6,6 +6,7 @@ import threading
 import sys
 import time
 
+
 from pymavlink import mavutil
 import cv2 as cv
 
