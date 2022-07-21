@@ -158,7 +158,7 @@ class DroneManager:
 
     def set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff):
         logger.info({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz,
-                     'diffx': dx, 'diffy': dy, 'percent': dz, 'frameA': FRAME_AREA, 'Face_frame': ff})
+                    'diffx': dx, 'diffy': dy, 'percent': dz, 'frameA': FRAME_AREA, 'Face_frame': ff})
 
         msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
             0,
@@ -262,117 +262,69 @@ class DroneManager:
             frame = cv.resize(frame, (FRAME_X, FRAME_Y))
 
             if self._is_enable_face_detect:
-                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-
-                # detects all the faces in a frame and stores to "faces"
-                faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
-
-                my_face_list_center = []
-                my_face_list_area = []
-
-                # loop through all the faces in the frame detected in each
-                # frame and
-                # we are only interested in the closest face
-                for (x, y, w, h) in faces:
-                    cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
-
-                    face_center_x = x + (w / 2)
-
-                    face_center_y = y + (h / 2)
-
-                    # to scale up the face_area to the FRAME_AREA
-                    face_area = float("{:.3f}".format(float(w * h * 14.8145)))
-                    my_face_list_area.append(face_area)
-                    my_face_list_center.append((face_center_x, face_center_y))
-
-                if len(my_face_list_area) != 0:
-                    i = my_face_list_area.index(max(my_face_list_area))
-                    info = [my_face_list_center[i], my_face_list_area[i]]
-
-                # if no face was detected
-                else:
-                    info = [[0, 0], 0]
-
-                diff_x = FRAME_CENTER_X - info[0][0]
-                diff_y = FRAME_CENTER_Y - info[0][1]
-
-                raw_percent_face = float(info[1] / FRAME_AREA)
-                percent_face = float("{:.3f}".format(raw_percent_face))
-
-                global P_Error_yaw
-                P_Error_yaw = self.error_calc_yaw(
-                    info, FRAME_X, PID, P_Error_yaw)
-
-                global P_Error_Vx
-                P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
-
-                global P_Error_Vy
-                P_Error_Vy = self.error_calc_Vy(info, FRAME_X, PID, P_Error_Vy)
-
-                global P_Error_Vz
-                P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
-
-                self.set_velocity_body(
-                    self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_face, info[1])
-                # time for the drone to respond to the initial commands
-                time.sleep(0.05)
-
-                self.condition_yaw(self.yaw_val, relative=True)
-                # time for the drone to respond to the second commands
-                time.sleep(0.05)
-
+                cascade = self.face_cascade
             elif self._is_enable_body_detect:
-                gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
-                bodies = self.body_cascade.detectMultiScale(gray, 1.3, 5)
+                cascade = self.body_cascade
 
-                my_body_list_center = []
-                my_body_list_area = []
+            gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
 
-                for (x, y, w, h) in bodies:
-                    cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
+            # detects all the faces/bodies in a frame and stores to "faces"
+            objects = cascade.detectMultiScale(gray, 1.3, 5)
 
-                    body_center_x = x + (w / 2)
+            my_object_list_center = []
+            my_object_list_area = []
 
-                    body_center_y = y + (h / 2)
+            # loop through all the objects in the frame detected in each
+            # frame and find the areas as well as the midpoints of the objects in the frame so far
+            # we are only interested in the closest object, hence the greatest area of the objects detected
+            for (x, y, w, h) in objects:
+                cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
-                    # to scale up the face_area to the FRAME_AREA
-                    body_area = float("{:.3f}".format(float(w * h * 14.8145)))
-                    my_body_list_area.append(body_area)
-                    my_body_list_center.append((body_center_x, body_center_y))
+                object_center_x = x + (w / 2)
 
-                if len(my_body_list_area) != 0:
-                    i = my_body_list_area.index(max(my_body_list_area))
-                    info = [my_body_list_center[i], my_body_list_area[i]]
-                else:
-                    info = [[0, 0], 0]
+                object_center_y = y + (h / 2)
 
-                diff_x = FRAME_CENTER_X - info[0][0]
-                diff_y = FRAME_CENTER_Y - info[0][1]
+                # to scale up the face_area to the FRAME_AREA
+                object_area = float("{:.3f}".format(float(w * h * 14.8145)))
+                my_object_list_area.append(object_area)
+                my_object_list_center.append(
+                    (object_center_x, object_center_y))
 
-                raw_percent_body = float(info[1] / FRAME_AREA)
-                percent_body = float("{:.3f}".format(raw_percent_body))
+            if len(my_object_list_area) != 0:
+                i = my_object_list_area.index(max(my_object_list_area))
+                info = [my_object_list_center[i], my_object_list_area[i]]
 
-                global P_Error_yaw
-                P_Error_yaw = self.error_calc_yaw(
-                    info, FRAME_X, PID, P_Error_yaw)
+            # if no face was detected
+            else:
+                info = [[0, 0], 0]
 
-                global P_Error_Vx
-                P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
+            diff_x = FRAME_CENTER_X - info[0][0]
+            diff_y = FRAME_CENTER_Y - info[0][1]
 
-                global P_Error_Vy
-                P_Error_Vy = self.error_calc_Vy(info, FRAME_X, PID, P_Error_Vy)
+            raw_percent_object = float(info[1] / FRAME_AREA)
+            percent_object = float("{:.3f}".format(raw_percent_object))
 
-                global P_Error_Vz
-                P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
+            global P_Error_yaw
+            P_Error_yaw = self.error_calc_yaw(
+                info, FRAME_X, PID, P_Error_yaw)
 
-                self.set_velocity_body(
-                    self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_body, info[1])
-                # time for the drone to respond to the initial commands
-                time.sleep(0.05)
+            global P_Error_Vx
+            P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
 
-                self.condition_yaw(self.yaw_val, relative=True)
-                # time for the drone to respond to the second commands
-                time.sleep(0.05)
+            global P_Error_Vy
+            P_Error_Vy = self.error_calc_Vy(info, FRAME_X, PID, P_Error_Vy)
+
+            global P_Error_Vz
+            P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
+
+            self.set_velocity_body(
+                self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_object, info[1])
+            # time for the drone to respond to the initial commands
+            time.sleep(0.05)
+
+            self.condition_yaw(self.yaw_val, relative=True)
+            # time for the drone to respond to the second commands
+            time.sleep(0.05)
 
             _, jpeg = cv.imencode('.jpg', frame)
             jpeg_binary = jpeg.tobytes()
