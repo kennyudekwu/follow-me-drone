@@ -2,7 +2,7 @@ from dronekit import VehicleMode
 import logging
 import numpy as np
 import os
-import threading
+# import threading
 import sys
 import time
 
@@ -10,7 +10,7 @@ import time
 from pymavlink import mavutil
 import cv2 as cv
 
-from contextlib2 import ExitStack
+# from contextlib2 import ExitStack
 
 from droneapp.models.base import Singleton
 
@@ -58,21 +58,23 @@ class DroneManager:
         self.Vz = 0
 
         if not os.path.exists(FACE_DETECT_XML_FILE):
-            raise ErrorNoFaceDetectXMLFile('No {}'.format(FACE_DETECT_XML_FILE))
+            raise ErrorNoFaceDetectXMLFile(
+                'No {}'.format(FACE_DETECT_XML_FILE))
         self.face_cascade = cv.CascadeClassifier(FACE_DETECT_XML_FILE)
         self.body_cascade = cv.CascadeClassifier(BODY_DETECT_XML_FILE)
         self._is_enable_face_detect = False
         self._is_enable_body_detect = False
 
         if not os.path.exists(SNAPSHOT_IMAGE_FOLDER):
-            raise ErrorNoImageDir('{} does not exists'.format(SNAPSHOT_IMAGE_FOLDER))
+            raise ErrorNoImageDir(
+                '{} does not exists'.format(SNAPSHOT_IMAGE_FOLDER))
 
         self.is_snapshot = False
         self.fly = False
-        self._command_semaphore = threading.Semaphore(1)
-        self._command_thread = None
-        self._yaw_semaphore = threading.Semaphore(1)
-        self._yaw_thread = None
+        # self._command_semaphore = threading.Semaphore(1)
+        # self._command_thread = None
+        # self._yaw_semaphore = threading.Semaphore(1)
+        # self._yaw_thread = None
 
     def __del__(self):
         self.stop()
@@ -105,7 +107,8 @@ class DroneManager:
 
             while True:
                 if self.fly:
-                    print("Current Altitude: %d" % self.vehicle.location.global_relative_frame.alt)
+                    print("Current Altitude: %d" %
+                          self.vehicle.location.global_relative_frame.alt)
                     if self.vehicle.location.global_relative_frame.alt >= (DEFAULT_ALTITUDE * .95):
                         break
                     time.sleep(1)
@@ -132,7 +135,8 @@ class DroneManager:
             while not self.vehicle.mode == VehicleMode("LAND"):
                 print("Vehicle is preparing to land...")
             while True:
-                print("Current Altitude: %d" % self.vehicle.location.global_relative_frame.alt)
+                print("Current Altitude: %d" %
+                      self.vehicle.location.global_relative_frame.alt)
                 if self.vehicle.location.global_relative_frame.alt <= 0.5:
                     break
 
@@ -143,64 +147,50 @@ class DroneManager:
         print("Vehicle currently grounded")
         return None
 
-    def set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff, blocking=True):
-        self._command_thread = threading.Thread(target=self._set_velocity_body, args=(Vx, Vy, Vz, dx, dy, dz,
-                                                                                      ff, blocking))
-        self._command_thread.start()
+    # def set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff, blocking=True):
+    #     self._command_thread = threading.Thread(target=self._set_velocity_body, args=(Vx, Vy, Vz, dx, dy, dz,
+    #                                                                                   ff, blocking))
+    #     self._command_thread.start()
 
-    def condition_yaw(self, heading, relative=False, blocking=True):
-        self._yaw_thread = threading.Thread(target=self._condition_yaw, args=(heading, relative, blocking))
-        self._yaw_thread.start()
+    # def condition_yaw(self, heading, relative=False, blocking=True):
+    #     self._yaw_thread = threading.Thread(target=self._condition_yaw, args=(heading, relative, blocking))
+    #     self._yaw_thread.start()
 
-    def _set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff, blocking=True):
-        is_acquire = self._command_semaphore.acquire(blocking=blocking)
-        if is_acquire:
-            with ExitStack() as stack:
-                stack.callback(self._command_semaphore.release)
-                logger.info({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz,
-                             'diffx': dx, 'diffy': dy, 'percent': dz, 'frameA': FRAME_AREA, 'Face_frame': ff})
+    def set_velocity_body(self, Vx, Vy, Vz, dx, dy, dz, ff):
+        logger.info({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz,
+                     'diffx': dx, 'diffy': dy, 'percent': dz, 'frameA': FRAME_AREA, 'Face_frame': ff})
 
-                msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
-                    0,
-                    0, 0,
-                    mavutil.mavlink.MAV_FRAME_BODY_OFFSET_NED,  # frame
-                    0b0000111111000111,  # Bitmask-considering only the velocities
-                    0, 0, 0,  # Position
-                    Vx, Vy, Vz,  # Velocity
-                    0, 0, 0,  # Acceleration
-                    0, 0)
-                self.vehicle.send_mavlink(msg)
-                self.vehicle.flush()
+        msg = self.vehicle.message_factory.set_position_target_local_ned_encode(
+            0,
+            0, 0,
+            mavutil.mavlink.MAV_FRAME_BODY_OFFSET_NED,  # frame
+            0b0000111111000111,  # Bitmask-considering only the velocities
+            0, 0, 0,  # Position
+            Vx, Vy, Vz,  # Velocity
+            0, 0, 0,  # Acceleration
+            0, 0)
+        self.vehicle.send_mavlink(msg)
+        self.vehicle.flush()
+
+    def condition_yaw(self, heading, relative=False):
+        logger.info({'action': 'send yaw command', 'yaw_val': heading})
+        if relative:
+            is_relative = 1  # yaw relative to direction of travel
         else:
-            logger.warning({'action': 'send velocity command', 'Vx': Vx, 'Vy': Vy, 'Vz': Vz, 'status': 'not_acquire'})
-        return None
-
-    def _condition_yaw(self, heading, relative=False, blocking=True):
-        is_acquire = self._command_semaphore.acquire(blocking=blocking)
-        if is_acquire:
-            with ExitStack() as stack1:
-                stack1.callback(self._command_semaphore.release)
-                logger.info({'action': 'send yaw command', 'yaw_val': heading})
-                if relative:
-                    is_relative = 1  # yaw relative to direction of travel
-                else:
-                    is_relative = 0  # yaw is an absolute angle
-                # create the CONDITION_YAW command using command_long_encode()
-                msg = self.vehicle.message_factory.command_long_encode(
-                    0, 0,  # target system, target component
-                    mavutil.mavlink.MAV_CMD_CONDITION_YAW,  # command
-                    0,  # confirmation
-                    0,  # param 1, yaw in degrees
-                    heading,  # param 2, yaw speed deg/s
-                    1,  # param 3, direction -1 ccw, 1 cw
-                    is_relative,  # param 4, relative offset 1, absolute angle 0
-                    0, 0, 0)  # param 5 ~ 7 not used
-                # send command to vehicle
-                self.vehicle.send_mavlink(msg)
-                self.vehicle.flush()
-        else:
-            logger.warning({'action': 'send yaw command', 'Yaw-val': heading, 'status': 'not_acquire'})
-        return None
+            is_relative = 0  # yaw is an absolute angle
+        # create the CONDITION_YAW command using command_long_encode()
+        msg = self.vehicle.message_factory.command_long_encode(
+            0, 0,  # target system, target component
+            mavutil.mavlink.MAV_CMD_CONDITION_YAW,  # command
+            0,  # confirmation
+            0,  # param 1, yaw in degrees
+            heading,  # param 2, yaw speed deg/s
+            1,  # param 3, direction -1 ccw, 1 cw
+            is_relative,  # param 4, relative offset 1, absolute angle 0
+            0, 0, 0)  # param 5 ~ 7 not used
+        # send command to vehicle
+        self.vehicle.send_mavlink(msg)
+        self.vehicle.flush()
 
     def enable_face_detect(self):
         self._is_enable_face_detect = True
@@ -273,11 +263,16 @@ class DroneManager:
 
             if self._is_enable_face_detect:
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
+
+                # detects all the faces in a frame and stores to "faces"
                 faces = self.face_cascade.detectMultiScale(gray, 1.3, 5)
 
                 my_face_list_center = []
                 my_face_list_area = []
 
+                # loop through all the faces in the frame detected in each
+                # frame and
+                # we are only interested in the closest face
                 for (x, y, w, h) in faces:
                     cv.rectangle(frame, (x, y), (x + w, y + h), (255, 0, 0), 2)
 
@@ -293,6 +288,8 @@ class DroneManager:
                 if len(my_face_list_area) != 0:
                     i = my_face_list_area.index(max(my_face_list_area))
                     info = [my_face_list_center[i], my_face_list_area[i]]
+
+                # if no face was detected
                 else:
                     info = [[0, 0], 0]
 
@@ -303,7 +300,8 @@ class DroneManager:
                 percent_face = float("{:.3f}".format(raw_percent_face))
 
                 global P_Error_yaw
-                P_Error_yaw = self.error_calc_yaw(info, FRAME_X, PID, P_Error_yaw)
+                P_Error_yaw = self.error_calc_yaw(
+                    info, FRAME_X, PID, P_Error_yaw)
 
                 global P_Error_Vx
                 P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
@@ -314,9 +312,14 @@ class DroneManager:
                 global P_Error_Vz
                 P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
 
-                self.set_velocity_body(self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_face, info[1],
-                                       blocking=False)
-                self.condition_yaw(self.yaw_val, relative=True, blocking=False)
+                self.set_velocity_body(
+                    self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_face, info[1])
+                # time for the drone to respond to the initial commands
+                time.sleep(0.05)
+
+                self.condition_yaw(self.yaw_val, relative=True)
+                # time for the drone to respond to the second commands
+                time.sleep(0.05)
 
             elif self._is_enable_body_detect:
                 gray = cv.cvtColor(frame, cv.COLOR_BGR2GRAY)
@@ -350,7 +353,8 @@ class DroneManager:
                 percent_body = float("{:.3f}".format(raw_percent_body))
 
                 global P_Error_yaw
-                P_Error_yaw = self.error_calc_yaw(info, FRAME_X, PID, P_Error_yaw)
+                P_Error_yaw = self.error_calc_yaw(
+                    info, FRAME_X, PID, P_Error_yaw)
 
                 global P_Error_Vx
                 P_Error_Vx = self.error_calc_Vx(info, PID, P_Error_Vx)
@@ -361,9 +365,14 @@ class DroneManager:
                 global P_Error_Vz
                 P_Error_Vz = self.error_calc_Vz(info, FRAME_Y, PID, P_Error_Vz)
 
-                self.set_velocity_body(self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_body, info[1],
-                                       blocking=False)
-                self.condition_yaw(self.yaw_val, relative=True, blocking=False)
+                self.set_velocity_body(
+                    self.Vx, self.Vy, self.Vz, diff_x, diff_y, percent_body, info[1])
+                # time for the drone to respond to the initial commands
+                time.sleep(0.05)
+
+                self.condition_yaw(self.yaw_val, relative=True)
+                # time for the drone to respond to the second commands
+                time.sleep(0.05)
 
             _, jpeg = cv.imencode('.jpg', frame)
             jpeg_binary = jpeg.tobytes()

@@ -48,21 +48,21 @@ def command():
     if cmd == 'land_now':
         drone.land_and_disarm()
     if cmd == 'up':
-        drone.set_velocity_body(0, 0, -0.2, 0, 0, 0, 0, blocking=False)
+        drone.set_velocity_body(0, 0, -0.2, 0, 0, 0, 0)
     if cmd == 'clockwise':
-        drone.condition_yaw(15, relative=True, blocking=True)
+        drone.condition_yaw(15, relative=True)
     if cmd == 'counterClockwise':
-        drone.condition_yaw(-15, relative=True, blocking=True)
+        drone.condition_yaw(-15, relative=True)
     if cmd == 'down':
-        drone.set_velocity_body(0, 0, 0.2, 0, 0, 0, 0, blocking=False)
+        drone.set_velocity_body(0, 0, 0.2, 0, 0, 0, 0)
     if cmd == 'forward':
-        drone.set_velocity_body(0.15, 0, 0, 0, 0, 0, 0, blocking=False)
+        drone.set_velocity_body(0.15, 0, 0, 0, 0, 0, 0)
     if cmd == 'left':
-        drone.set_velocity_body(0, -0.15, 0, 0, 0, 0, 0, blocking=False)
+        drone.set_velocity_body(0, -0.15, 0, 0, 0, 0, 0)
     if cmd == 'right':
-        drone.set_velocity_body(0, 0.15, 0, 0, 0, 0, 0, blocking=False)
+        drone.set_velocity_body(0, 0.15, 0, 0, 0, 0, 0)
     if cmd == 'backward':
-        drone.set_velocity_body(-0.15, 0, 0, 0, 0, 0, 0, blocking=False)
+        drone.set_velocity_body(-0.15, 0, 0, 0, 0, 0, 0)
     if cmd == 'faceDetectandTrack':
         drone.enable_face_detect()
     if cmd == 'stopfaceDetectandTrack':
@@ -103,4 +103,5 @@ def video_feed():
 
 
 def run():
-    app.run(host=config.WEB_ADDRESS, port=config.WEB_PORT, debug=True, threaded=True)
+    app.run(host=config.WEB_ADDRESS, port=config.WEB_PORT,
+            debug=True, threaded=True)
