@@ -351,32 +351,32 @@ class DroneManager:
             retry += 1
         return False
 
-    def change_mode(self):
-        if not self.vehicle.mode.name == "LOITER":
-            self.vehicle.mode = VehicleMode("LOITER")
-            while self.vehicle.mode != VehicleMode("LOITER"):
-                print("Waiting for vehicle to enter LOITER mode")
+    def change_mode(self, mode):
+        if not self.vehicle.mode.name == mode:
+            self.vehicle.mode = VehicleMode(mode)
+            while self.vehicle.mode != VehicleMode(mode):
+                print('Waiting for vehicle to enter {} mode'.format(mode))
             print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
         else:
             print('Vehicle mode already {}'.format(self.vehicle.mode))
         return None
 
-    def change_mode_auto(self):
-        if not self.vehicle.mode.name == "GUIDED":
-            self.vehicle.mode = VehicleMode("GUIDED")
-            while self.vehicle.mode != VehicleMode("GUIDED"):
-                print("Waiting for vehicle to enter GUIDED mode")
-            print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
-        else:
-            print('Vehicle mode already {}'.format(self.vehicle.mode))
-        return None
+    # def change_mode_auto(self):
+    #     if not self.vehicle.mode.name == "GUIDED":
+    #         self.vehicle.mode = VehicleMode("GUIDED")
+    #         while self.vehicle.mode != VehicleMode("GUIDED"):
+    #             print("Waiting for vehicle to enter GUIDED mode")
+    #         print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
+    #     else:
+    #         print('Vehicle mode already {}'.format(self.vehicle.mode))
+    #     return None
 
-    def change_mode_RTL(self):
-        if not self.vehicle.mode.name == "RTL":
-            self.vehicle.mode = VehicleMode("RTL")
-            while self.vehicle.mode != VehicleMode("RTL"):
-                print("vehicle is initializing RTL mode...")
-            print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
-        else:
-            print('Vehicle mode already {}'.format(self.vehicle.mode))
-        return None
+    # def change_mode_RTL(self):
+    #     if not self.vehicle.mode.name == "RTL":
+    #         self.vehicle.mode = VehicleMode("RTL")
+    #         while self.vehicle.mode != VehicleMode("RTL"):
+    #             print("vehicle is initializing RTL mode...")
+    #         print('Vehicle mode has been switched to {}'.format(self.vehicle.mode))
+    #     else:
+    #         print('Vehicle mode already {}'.format(self.vehicle.mode))
+    #     return None

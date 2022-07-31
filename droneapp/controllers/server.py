@@ -72,11 +72,11 @@ def command():
     if cmd == 'stopbodyDetectandTrack':
         drone.disable_body_detect()
     if cmd == 'loiter':
-        drone.change_mode()
+        drone.change_mode('LOITER')
     if cmd == 'guided':
-        drone.change_mode_auto()
+        drone.change_mode('GUIDED')
     if cmd == 'rtl':
-        drone.change_mode_RTL()
+        drone.change_mode('RTL')
     if cmd == 'snapshot':
         if drone.snapshot():
             return jsonify(status='success'), 200
